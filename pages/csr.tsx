@@ -1,11 +1,20 @@
 import type { NextPage } from "next";
-import Link from "next/link";
 import Head from "next/head";
 import Image from "next/image";
+import { Suspense } from "react";
+import { useLazyLoadQuery } from "react-relay";
 
+import type { IssuesQuery } from "../__generated__/IssuesQuery.graphql";
+import IssuesQueryDocument from "../graphql/IssuesQuery";
 import styles from "../styles/Home.module.css";
 
-const Home: NextPage = () => {
+const CSR: NextPage = () => {
+  const data = useLazyLoadQuery<IssuesQuery>(IssuesQueryDocument, {
+    owner: "vercel",
+    name: "next.js",
+    first: 4,
+  });
+
   return (
     <div className={styles.container}>
       <Head>
@@ -25,19 +34,18 @@ const Home: NextPage = () => {
         </p>
 
         <div className={styles.grid}>
-          <Link href="/csr">
-            <a className={styles.card}>
-              <h2>Using CSR</h2>
-              <p>Example using client-side rendering</p>
-            </a>
-          </Link>
-
-          <Link href="/ssr">
-            <a className={styles.card}>
-              <h2>Using SSR</h2>
-              <p>Example using server-side rendering</p>
-            </a>
-          </Link>
+          <Suspense fallback={<div>Loading</div>}>
+            {data?.repository?.issues?.edges?.map((edge) => (
+              <a
+                href={edge?.node?.url}
+                key={edge?.node?.number}
+                className={styles.card}
+              >
+                <h2>Issue {edge?.node?.number}</h2>
+                <p>{edge?.node?.title}</p>
+              </a>
+            ))}
+          </Suspense>
         </div>
       </main>
 
@@ -57,4 +65,4 @@ const Home: NextPage = () => {
   );
 };
 
-export default Home;
+export default CSR;

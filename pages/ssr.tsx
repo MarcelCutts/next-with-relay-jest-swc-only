@@ -1,11 +1,16 @@
-import type { NextPage } from "next";
-import Link from "next/link";
+import type { NextPage, InferGetServerSidePropsType } from "next";
 import Head from "next/head";
 import Image from "next/image";
+import { fetchQuery } from "react-relay";
 
+import type { IssuesQuery } from "../__generated__/IssuesQuery.graphql";
+import IssuesQueryDocument from "../graphql/IssuesQuery";
+import { initEnvironment, dehydrateStore } from "../lib/relay";
 import styles from "../styles/Home.module.css";
 
-const Home: NextPage = () => {
+const SSR: NextPage<InferGetServerSidePropsType<typeof getServerSideProps>> = ({
+  issues,
+}) => {
   return (
     <div className={styles.container}>
       <Head>
@@ -25,19 +30,16 @@ const Home: NextPage = () => {
         </p>
 
         <div className={styles.grid}>
-          <Link href="/csr">
-            <a className={styles.card}>
-              <h2>Using CSR</h2>
-              <p>Example using client-side rendering</p>
+          {issues?.edges?.map((edge) => (
+            <a
+              href={edge?.node?.url}
+              key={edge?.node?.number}
+              className={styles.card}
+            >
+              <h2>Issue {edge?.node?.number}</h2>
+              <p>{edge?.node?.title}</p>
             </a>
-          </Link>
-
-          <Link href="/ssr">
-            <a className={styles.card}>
-              <h2>Using SSR</h2>
-              <p>Example using server-side rendering</p>
-            </a>
-          </Link>
+          ))}
         </div>
       </main>
 
@@ -57,4 +59,25 @@ const Home: NextPage = () => {
   );
 };
 
-export default Home;
+export default SSR;
+
+export const getServerSideProps = async () => {
+  const environment = initEnvironment();
+
+  const result = await fetchQuery<IssuesQuery>(
+    environment,
+    IssuesQueryDocument,
+    {
+      owner: "vercel",
+      name: "next.js",
+      first: 4,
+    }
+  ).toPromise();
+
+  return {
+    props: {
+      initialRecords: dehydrateStore(environment),
+      issues: result?.repository?.issues,
+    },
+  };
+};
